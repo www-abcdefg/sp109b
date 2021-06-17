@@ -10,7 +10,18 @@ int tempIdx = 0, labelIdx = 0;
 
 #define nextTemp() (tempIdx++)
 #define nextLabel() (labelIdx++)
-#define emit printf
+// #define emit printf
+int isTempIr = 0;
+char tempIr[100000], *tempIrp = tempIr;
+#define emit(...) ({ \
+  if (isTempIr){ /*判斷isTempIr是否為1*/ \
+    sprintf(tempIrp, __VA_ARGS__); /*不會印出來，並將其轉成指標陣列tempIrp存起來*/ \
+    tempIrp += strlen(tempIrp);\
+  }\
+  else { \
+    printf(__VA_ARGS__); /*若為0，則將其印出*/ \
+  }\
+})
 
 int isNext(char *set) {
   char eset[SMAX], etoken[SMAX];
@@ -44,10 +55,24 @@ int F() {
     next(); // (
     f = E();
     next(); // )
-  } else { // Number | Id
+  }
+  else { // Number | Id
     f = nextTemp();
     char *item = next();
-    emit("t%d = %s\n", f, item);
+    if(isdigit(*item)){
+      emit("t%d = %s\n", f, item);
+    }
+    else{
+      if(isNext("++")){
+        next();
+        emit("%s = %s + 1\n", item, item);
+      }
+      else if(isNext("--")){
+        next();
+        emit("%s = %s - 1\n", item, item);
+      }
+      emit("t%d = %s\n", f, item);
+    }
   }
   return f;
 }
@@ -89,17 +114,46 @@ void WHILE() {
   emit("(L%d)\n", whileEnd);
 }
 
-// if (EXP) STMT (else STMT)?
-void IF() {
+void IF(){
+  int ifBegin = nextLabel();
+  int ifMid = nextLabel();
+  int ifEnd = nextLabel();
+  emit("(L%d)\n", ifBegin);
   skip("if");
   skip("(");
-  E();
+  int e = E();
+  emit("if not T%d goto L%d\n", e, ifMid); //若判斷式不成立則進入下一個條件式
   skip(")");
   STMT();
-  if (isNext("else")) {
+  emit("goto L%d\n", ifEnd); //表示完成條件式中的code，並結束整個條件式
+  emit("(L%d)\n", ifMid);
+  if(isNext("else")){ //else if和else的條件式
     skip("else");
     STMT();
+    emit("(L%d)\n",ifEnd); //表示完成條件式中的code，並結束整個條件式
   }
+}
+
+void FOR(){
+  int forBegin = nextLabel();
+  int forEnd = nextLabel();
+  emit("(L%d)\n", forBegin);
+  skip("for");
+  skip("(");
+  ASSIGN();
+  int e = E();
+  emit("if not T%d goto L%d\n", e, forEnd);
+  skip(";");
+  isTempIr = 1;
+  int e1 = E(); //先將i++的部分暫存
+  isTempIr = 0;
+  char e1str[10000];
+  strcpy(e1str, tempIr); //複製tempIr給e1str
+  skip(")");
+  STMT();
+  emit("%s\n", e1str); //印出e1str(i++)
+  emit("goto L%d\n", forBegin);
+  emit("(L%d)", forEnd);
 }
 
 // STMT = WHILE | BLOCK | ASSIGN
@@ -108,6 +162,8 @@ void STMT() {
     return WHILE();
   else if (isNext("if"))
     IF();
+  else if (isNext("for"))
+    FOR();
   else if (isNext("{"))
     BLOCK();
   else
