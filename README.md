@@ -49,3 +49,5 @@
 [RISC-V 處理器](https://programmermedia.org/root/%E9%99%B3%E9%8D%BE%E8%AA%A0/%E8%AA%B2%E7%A8%8B/%E7%B3%BB%E7%B5%B1%E7%A8%8B%E5%BC%8F/09-riscv/)      | 組合語言 / mini-riscv-os / xv6 
 
 
+# 授權聲明
+* [授權聲明](https://github.com/www-abcdefg/sp109b/blob/main/LICENSE.md)
